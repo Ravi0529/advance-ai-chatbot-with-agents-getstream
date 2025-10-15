@@ -48,8 +48,9 @@ export class OpenAIResponseHandler {
 
     try {
       await this.openai.beta.threads.runs.cancel(
-        this.openAiThread.id,
-        this.run_id
+        this.run_id, {
+          thread_id: this.openAiThread.id,
+        }
       );
     } catch (error) {
       console.log("Error cancelling run", error);
