@@ -26,7 +26,94 @@ export class OpenAIResponseHandler {
     this.chatClient.on("ai_indicator.stop", this.handleStopGenerating);
   }
 
-  run = async () => {};
+  run = async () => {
+    const { cid, id: message_id } = this.message;
+    let isCompleted = false;
+    let toolOutputs = [];
+    let currentStream: AssistantStream = this.assistantStream;
+
+    try {
+      while (!isCompleted) {
+        for await (const event of currentStream) {
+          this.handleStreamEvent(event);
+
+          if (
+            event.event === "thread.run.requires_action" &&
+            event.data.required_action?.type === "submit_tool_outputs"
+          ) {
+            this.run_id = event.data.id;
+            await this.channel.sendEvent({
+              type: "ai_indicator.update",
+              ai_state: "AI_STATE_EXTERNAL_SOURCES",
+              cid: cid,
+              message_id: message_id,
+            });
+            const toolCalls =
+              event.data.required_action.submit_tool_outputs.tool_calls;
+            toolOutputs = [];
+
+            for (const toolCall of toolCalls) {
+              if (toolCall.function.name === "web_search") {
+                try {
+                  const args = JSON.parse(toolCall.function.arguments);
+                  const searchResult = await this.performWebSearch(args.query);
+                  toolOutputs.push({
+                    tool_call_id: toolCall.id,
+                    output: searchResult,
+                  });
+                } catch (error) {
+                  console.error(
+                    "Error parsing tool arguements or performing web search",
+                    error
+                  );
+                  toolOutputs.push({
+                    tool_call_id: toolCall.id,
+                    output: JSON.stringify({
+                      error: "Failed to call tool",
+                    }),
+                  });
+                }
+              }
+            }
+            break;
+          }
+
+          if (event.event === "thread.run.completed") {
+            isCompleted = true;
+            break;
+          }
+
+          if (event.event === "thread.run.failed") {
+            isCompleted = true;
+            await this.handleError(
+              new Error(event.data.last_error?.message ?? "Run failed")
+            );
+            break;
+          }
+        }
+
+        if (isCompleted) {
+          break;
+        }
+
+        if (toolOutputs.length > 0) {
+          currentStream = this.openai.beta.threads.runs.submitToolOutputsStream(
+            this.run_id,
+            {
+              thread_id: this.openAiThread.id,
+              tool_outputs: toolOutputs,
+            }
+          );
+          toolOutputs = [];
+        }
+      }
+    } catch (error) {
+      console.error("An error occurred during the run:", error);
+      await this.handleError(error as Error);
+    } finally {
+      await this.dispose();
+    }
+  };
 
   dispose = async () => {
     if (this.is_done) {
@@ -47,11 +134,9 @@ export class OpenAIResponseHandler {
     }
 
     try {
-      await this.openai.beta.threads.runs.cancel(
-        this.run_id, {
-          thread_id: this.openAiThread.id,
-        }
-      );
+      await this.openai.beta.threads.runs.cancel(this.run_id, {
+        thread_id: this.openAiThread.id,
+      });
     } catch (error) {
       console.log("Error cancelling run", error);
     }
@@ -63,7 +148,53 @@ export class OpenAIResponseHandler {
     await this.dispose();
   };
 
-  private handleStreamEvent = async (event: Event) => {};
+  private handleStreamEvent = async (
+    event: OpenAI.Beta.Assistants.AssistantStreamEvent
+  ) => {
+    const { cid, id } = this.message;
+
+    if (event.event === "thread.run.created") {
+      this.run_id = event.data.id;
+    } else if (event.event === "thread.message.delta") {
+      const textDelta = event.data.delta.content?.[0];
+      if (textDelta?.type === "text" && textDelta.text) {
+        this.message.text += textDelta.text.value || "";
+        const now = Date.now();
+        if (now - this.last_update_time > 1000) {
+          this.chatClient.partialUpdateMessage(id, {
+            set: {
+              text: this.message_text,
+            },
+          });
+          this.last_update_time = now;
+        }
+        this.chunk_counter += 1;
+      }
+    } else if (event.event === "thread.message.completed") {
+      this.chatClient.partialUpdateMessage(id, {
+        set: {
+          text:
+            event.data.content[0].type === "text"
+              ? event.data.content[0].text.value
+              : this.message_text,
+        },
+      });
+      this.channel.sendEvent({
+        type: "ai_indicator.clear",
+        cid: cid,
+        message_id: id,
+      });
+    } else if (event.event === "thread.run.step.created") {
+      if (event.data.step_details.type === "message_creation") {
+        this.channel.sendEvent({
+          type: "ai_indicator.update",
+          ai_state: "AI_STATE_GENERATING",
+          cid: cid,
+          message_id: id,
+        });
+      }
+    }
+  };
 
   private handleError = async (error: Error) => {
     if (this.is_done) {
