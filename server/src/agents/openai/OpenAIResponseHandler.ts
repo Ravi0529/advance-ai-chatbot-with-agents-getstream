@@ -120,7 +120,7 @@ export class OpenAIResponseHandler {
       return;
     }
     this.is_done = true;
-    this.chatClient.off("ai_indication.stop", this.handleStopGenerating);
+    this.chatClient.off("ai_indicator.stop", this.handleStopGenerating);
     this.onDispose();
   };
 
@@ -158,7 +158,7 @@ export class OpenAIResponseHandler {
     } else if (event.event === "thread.message.delta") {
       const textDelta = event.data.delta.content?.[0];
       if (textDelta?.type === "text" && textDelta.text) {
-        this.message.text += textDelta.text.value || "";
+        this.message_text += textDelta.text.value || "";
         const now = Date.now();
         if (now - this.last_update_time > 1000) {
           this.chatClient.partialUpdateMessage(id, {
