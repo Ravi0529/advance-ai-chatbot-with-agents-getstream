@@ -253,7 +253,7 @@ export class OpenAIResponseHandler {
       }
 
       const data = await response.json();
-      console.log(`Tavily search successfuk for query: ${query}`);
+      console.log(`Tavily search successfull for query: ${query}`);
 
       return JSON.stringify(data);
     } catch (error) {
