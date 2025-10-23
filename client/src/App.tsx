@@ -1,35 +1,42 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import AuthenticatedApp from "./components/authenticated-app";
+import Login from "./components/login";
+import { Toaster } from "./components/ui/sonner";
+import { ThemeProvider } from "./providers/theme-provider";
+import { useState } from "react";
+import { type User } from "stream-chat";
 
-function App() {
-  const [count, setCount] = useState(0)
+const USER_STORAGE_KEY = "chat-ai-app-user";
+
+const App = () => {
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem(USER_STORAGE_KEY);
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const handleUserLogin = (authenticatedUser: User) => {
+    const avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${authenticatedUser.name}`;
+    const userWithImage = {
+      ...authenticatedUser,
+      image: avatarUrl,
+    };
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userWithImage));
+    setUser(userWithImage);
+  };
+
+  // const handleLogout = () => {
+  //   localStorage.removeItem(USER_STORAGE_KEY);
+  //   setUser(null);
+  // };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <div className="h-screen bg-background">
+        {user ? <AuthenticatedApp /> : <Login onLogin={handleUserLogin} />}
 
-export default App
+        <Toaster />
+      </div>
+    </ThemeProvider>
+  );
+};
+
+export default App;
