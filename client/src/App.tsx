@@ -1,13 +1,13 @@
-import AuthenticatedApp from "./components/authenticated-app";
-import Login from "./components/login";
-import { Toaster } from "./components/ui/sonner";
-import { ThemeProvider } from "./providers/theme-provider";
+import { AuthenticatedApp } from "@/components/authenticated-app";
+import Login from "@/components/login";
+import { ThemeProvider } from "@/providers/theme-provider";
 import { useState } from "react";
 import { type User } from "stream-chat";
+import { Toaster } from "sonner";
 
 const USER_STORAGE_KEY = "chat-ai-app-user";
 
-const App = () => {
+function App() {
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem(USER_STORAGE_KEY);
     return savedUser ? JSON.parse(savedUser) : null;
@@ -23,20 +23,24 @@ const App = () => {
     setUser(userWithImage);
   };
 
-  // const handleLogout = () => {
-  //   localStorage.removeItem(USER_STORAGE_KEY);
-  //   setUser(null);
-  // };
+  const handleLogout = () => {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    setUser(null);
+  };
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <div className="h-screen bg-background">
-        {user ? <AuthenticatedApp /> : <Login onLogin={handleUserLogin} />}
+        {user ? (
+          <AuthenticatedApp user={user} onLogout={handleLogout} />
+        ) : (
+          <Login onLogin={handleUserLogin} />
+        )}
 
-        <Toaster />
+        <Toaster richColors />
       </div>
     </ThemeProvider>
   );
-};
+}
 
 export default App;
