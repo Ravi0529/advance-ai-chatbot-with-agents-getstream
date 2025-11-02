@@ -7,7 +7,7 @@ interface UseAIAgentStatusProps {
   backendUrl: string;
 }
 
-export const UseAIAgentStatus = ({
+export const useAIAgentStatus = ({
   channelId,
   backendUrl,
 }: UseAIAgentStatusProps) => {
