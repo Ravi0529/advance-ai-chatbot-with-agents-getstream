@@ -247,20 +247,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
 
     const adaptedSendMessage = async (message: { text: string }) => {
-      const tempId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-      await sendMessage({
-        localMessage: {
-          id: tempId,
-          text: message.text,
-          user: channel?.data?.created_by || { id: "current-user" },
-          created_at: new Date(),
-        } as any,
-        message: {
-          id: tempId,
-          text: message.text,
-        },
-        options: {},
+      await (sendMessage as any)({
+        text: message.text,
       });
     };
 
