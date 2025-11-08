@@ -16,8 +16,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "openai": "^6.3.0",
-    "stream-chat": "^8.60.0"
+    "openai": "^6.8.1",
+    "stream-chat": "^9.24.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

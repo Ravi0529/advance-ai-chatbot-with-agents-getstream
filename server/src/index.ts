@@ -167,7 +167,7 @@ app.post("/token", async (req, res) => {
     const issuedAt = Math.floor(Date.now() / 1000);
     const expiration = issuedAt + 60 * 60;
 
-    const token = serverClient.createToken(userId, expiration, issuedAt);
+    const token = serverClient.createToken(userId);
 
     res.json({ token });
   } catch (error) {

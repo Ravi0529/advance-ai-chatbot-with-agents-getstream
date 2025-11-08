@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Channel, DefaultGenerics, Event, StreamChat } from "stream-chat";
+import type { Channel, Event, StreamChat } from "stream-chat";
 import type { AIAgent } from "../types";
 import { OpenAIResponseHandler } from "./OpenAIResponseHandler";
 
@@ -100,13 +100,13 @@ export class OpenAIAgent implements AIAgent {
     Your goal is to provide accurate, current, and helpful written content. Failure to use web search for recent topics will result in an incorrect answer.`;
   };
 
-  private handleMessage = async (e: Event<DefaultGenerics>) => {
+  private handleMessage = async (e: Event) => {
     if (!this.openai || !this.openAiThread || !this.assistant) {
       console.log("OpenAI not initialized");
       return;
     }
 
-    if (!e.message || !e.message.ai_generated) {
+    if (!e.message || !(e.message as any).ai_generated) {
       return;
     }
 
@@ -116,7 +116,7 @@ export class OpenAIAgent implements AIAgent {
     this.lastInteractionTs = Date.now();
 
     const writingTask = (
-      e.message.custom as {
+      (e.message as any)?.custom as {
         writingTask?: string;
       }
     )?.writingTask;
@@ -128,10 +128,10 @@ export class OpenAIAgent implements AIAgent {
       content: message,
     });
 
-    const { message: channelMessage } = await this.channel.sendMessage({
-      text: "",
-      ai_generated: true,
-    });
+    const { message: channelMessage } = await this.channel.sendMessage(
+      // cast to any to allow sending custom fields that don't match the current typing
+      { text: "", custom: { ai_generated: true } } as any
+    );
 
     await this.channel.sendEvent({
       type: "ai_indicator.update",

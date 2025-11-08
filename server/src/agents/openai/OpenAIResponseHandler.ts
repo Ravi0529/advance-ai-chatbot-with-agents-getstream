@@ -209,7 +209,6 @@ export class OpenAIResponseHandler {
     await this.chatClient.partialUpdateMessage(this.message.id, {
       set: {
         text: error.message ?? "Error generating a message",
-        message: error.toString(),
       },
     });
     await this.dispose();
